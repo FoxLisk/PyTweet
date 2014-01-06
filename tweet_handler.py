@@ -24,8 +24,8 @@ class Tweet(object):
   FORMAT_COLORS = {
     'cun': bcolors.MAGENTA,
     'csn': bcolors.MAGENTA,
-    'crt': bcolors.BLUE,
-    'cdate': bcolors.CYAN,
+    'crt': bcolors.CYAN,
+    'cdate': bcolors.BLUE,
     'ctext': bcolors.WHITE,
     'cend': bcolors.ENDC}
 
@@ -51,7 +51,10 @@ class Tweet(object):
     options.update(self.FORMAT_COLORS)
 
     if self.is_rt:
-      options['rt_string'] = ' (RTd by %s)' % self.retweeted_status['user']['name']
+      options['rt_string'] = ' (RTd by %s)' % self.user['name']
+      options['screen_name'] = self.retweeted_status['user']['screen_name']
+      options['username'] = self.retweeted_status['user']['name']
+      options['date'] = self.retweeted_status['created_at']
     return self.HEADER_FORMAT.format(**options)
 
   def _format_normal(self):
