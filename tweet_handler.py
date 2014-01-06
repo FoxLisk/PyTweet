@@ -109,16 +109,25 @@ class TweetHandler(object):
 
   def _init_commands(self):
     self.commands = {
-      't': self.load_timeline,
-      'timeline': self.load_timeline
+      's': self.load_timeline,
+      'show': self.load_timeline,
+      't': self.tweet,
+      'tweet': self.tweet
     }
+
+  def tweet(self, text=None):
+    if text is None:
+      print 'Please enter text to tweet'
+      return
+    self.client.update_status(status=text)
+    print 'Posted "%s" to your account' % text
 
   def print_tweets(self, max=10):
     for tweet in self.tweets:
       if tweet.shown:
-        print 'Tweet id %s already shown' % tweet.id_str
         continue
       print tweet.format()
+      tweet.shown = True
 
   def loop(self):
     self.load_timeline()
@@ -129,7 +138,7 @@ class TweetHandler(object):
       if user_cmd == 'q':
         break
 
-      cmd_parts = re.split(r'\s+', user_cmd)
-      cmd_name = cmd_parts.pop(0)
+      cmd = re.split(r'\s+', user_cmd, maxsplit=1)
+      cmd_name = cmd.pop(0)
       if cmd_name in self.commands:
-        self.commands[cmd_name](*cmd_parts)
+        self.commands[cmd_name](*cmd)
