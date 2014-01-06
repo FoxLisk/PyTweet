@@ -8,38 +8,65 @@ from datetime import datetime
 DATETIME_FORMAT = '%a %b %d %H:%M:%S +0000 %Y'
 
 class bcolors:
-    PINK = '\033[95m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    ENDC = '\033[0m'
+    MAGENTA = '\033[35m'
+    BLUE    = '\033[34m'
+    GREEN   = '\033[32m'
+    YELLOW  = '\033[33m'
+    RED     = '\033[31m'
+    ENDC    = '\033[0m'
+    BLACK   = "\033[30m"
+    CYAN    = "\033[36m"
+    WHITE   = "\033[37m"
 
 class Tweet(object):
   id_ctr = 0
+  HEADER_FORMAT = u'{cun}{username} {csn}(@{screen_name}){crt}{rt_string} {cdate}{date}{cend}'
+  FORMAT_COLORS = {
+    'cun': bcolors.MAGENTA,
+    'csn': bcolors.MAGENTA,
+    'crt': bcolors.BLUE,
+    'cdate': bcolors.CYAN,
+    'ctext': bcolors.WHITE,
+    'cend': bcolors.ENDC}
+
   def __init__(self, tweet_dict):
     self.raw = tweet_dict
     self.shown = False
     self.is_rt = 'retweeted_status' in tweet_dict
     self._id = Tweet.id_ctr
     Tweet.id_ctr += 1
+    self.date = datetime.strptime(tweet_dict['created_at'], DATETIME_FORMAT)
 
   def __getattr__(self, name):
     return self.raw.get(name, None)
 
+  def _format_header(self):
+    options = {
+      'pink': bcolors.MAGENTA,
+      'username': self.user['name'],
+      'screen_name': self.user['screen_name'],
+      'date': self.date.strftime('%d/%m/%y %H:%M'),
+      'rt_string': ''
+    }
+    options.update(self.FORMAT_COLORS)
+
+    if self.is_rt:
+      options['rt_string'] = ' (RTd by %s)' % self.retweeted_status['user']['name']
+    return self.HEADER_FORMAT.format(**options)
+
   def _format_normal(self):
     formatted_text = '\n'.join('  %s' % line for line in self.text.split('\n'))
-    return '%s%s %s\n%s%s%s' % (
-      bcolors.PINK, self.user['name'], self.created_at,
-      bcolors.BLUE, formatted_text, bcolors.ENDC)
+    options = {'text': formatted_text, 'header': self._format_header()}
+    options.update(self.FORMAT_COLORS)
+    return u'{header}\n{ctext}{text}{cend}'.format(**options)
+      
 
   def _format_rt(self):
     formatted_text = '\n'.join('  %s' % line for line in
       self.retweeted_status['text'].split('\n'))
-    header = '%s%s %s %s(RTd by %s)' % (
-      bcolors.PINK, self.retweeted_status['user']['name'],
-      bcolors.GREEN, self.user['name'], self.created_at)
-    return '%s\n%s%s%s' % (header, bcolors.BLUE, formatted_text, bcolors.ENDC)
+    options = {'text': formatted_text, 'header': self._format_header()}
+    options.update(self.FORMAT_COLORS)
+    return u'{header}\n{ctext}{text}{cend}'.format(**options)
 
   def format(self):
     if self.is_rt:
