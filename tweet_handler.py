@@ -36,6 +36,9 @@ class Tweet(object):
     self._id = Tweet.id_ctr
     Tweet.id_ctr += 1
     self.date = datetime.strptime(tweet_dict['created_at'], DATETIME_FORMAT)
+    if self.is_rt:
+        self.date = datetime.strptime(tweet_dict['retweeted_status']['created_at'], DATETIME_FORMAT)
+
 
   def __getattr__(self, name):
     return self.raw.get(name, None)
@@ -54,7 +57,6 @@ class Tweet(object):
       options['rt_string'] = ' (RTd by %s)' % self.user['name']
       options['screen_name'] = self.retweeted_status['user']['screen_name']
       options['username'] = self.retweeted_status['user']['name']
-      options['date'] = self.retweeted_status['created_at']
     return self.HEADER_FORMAT.format(**options)
 
   def _format_normal(self):
