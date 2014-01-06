@@ -51,7 +51,6 @@ class TweetHandler(object):
   def __init__(self, client):
     self.client = client
     self.tweets = []
-    self.seen_ids = set([])
     self.largest_id = None
     self._init_commands()
 
@@ -77,10 +76,8 @@ class TweetHandler(object):
     tweets = self._fetch_tweets()
     print 'Found %d tweets' % len(tweets)
     if tweets:
-      self.largest_id = tweets[-1]['id_str']
-      self.tweets.extend({Tweet(tweet) for tweet in
-                         reversed(tweets) if tweet['id_str'] not in self.seen_ids})
-      self.seen_ids.update([tweet['id_str'] for tweet in tweets])
+      self.largest_id = max(t['id'] for t in tweets)
+      self.tweets.extend(Tweet(tweet) for tweet in tweets)
     self.print_tweets()
 
   def _init_commands(self):
