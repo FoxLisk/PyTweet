@@ -1,0 +1,2 @@
+APP_KEY = 'WZz6s6nK8vD1ouRBwmaPfg'
+APP_SECRET = 'l3jaEVyWoDmHU5f5cbvKZKkaEBoiqEgQ2qqdU7fz64'
