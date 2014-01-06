@@ -16,10 +16,31 @@ class Tweet(object):
   def __init__(self, tweet_dict):
     self.raw = tweet_dict
     self.shown = False
+    self.is_rt = 'retweeted_status' in tweet_dict
 
   def __getattr__(self, name):
     return self.raw.get(name, None)
 
+  def _format_normal(self):
+    formatted_text = '\n'.join('  %s' % line for line in self.text.split('\n'))
+    return '%s%s\n%s%s%s' % (
+      bcolors.PINK, self.user['name'],
+      bcolors.BLUE, formatted_text, bcolors.ENDC)
+
+  def _format_rt(self):
+    formatted_text = '\n'.join('  %s' % line for line in
+      self.retweeted_status['text'].split('\n'))
+    header = '%s%s %s(RTd by %s)' % (
+      bcolors.PINK, self.retweeted_status['user']['name'],
+      bcolors.GREEN, self.user['name'])
+    return '%s\n%s%s%s' % (header, bcolors.BLUE, formatted_text, bcolors.ENDC)
+
+  def format(self):
+    if self.is_rt:
+      return self._format_rt()
+    else:
+      return self._format_normal()
+    
 class TweetHandler(object):
   def __init__(self, client):
     self.client = client
@@ -52,13 +73,7 @@ class TweetHandler(object):
     for tweet in self.tweets:
       if tweet.shown:
         continue
-      self.print_tweet(tweet)
-
-  def print_tweet(self, tweet):
-    formatted_text = '\n'.join('  %s' % line for line in tweet.text.split('\n'))
-    print '%s%s\n    %s%s%s' % (
-      bcolors.PINK, tweet.user['name'],
-      bcolors.BLUE, formatted_text, bcolors.ENDC)
+      print tweet.format()
 
   def loop(self):
     self.load_timeline()
