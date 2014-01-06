@@ -1,6 +1,8 @@
 from twython import Twython
 import settings
 import sys
+
+from tweet_handler import TweetHandler
 try:
   import user_settings
   do_setup = True
@@ -40,5 +42,5 @@ if not do_setup:
 
 twitter = Twython(settings.APP_KEY, settings.APP_SECRET,
                   user_settings.oauth_token, user_settings.oauth_token_secret)
-
-tweets = twitter.get_home_timeline()
+      
+TweetHandler(twitter).loop()
