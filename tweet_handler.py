@@ -135,23 +135,33 @@ class TweetHandler(object):
       'reply': self.reply
     }
 
-  def tweet(self, text=None):
+  def tweet(self, text=None, **kwargs):
     if text is None:
       print 'Please enter text to tweet'
       return
     if len(text) > 140:
       print 'Tweet is too long (%d characters total)' % len(text)
       return
-    self.client.update_status(status=text)
+    self.client.update_status(status=text, **kwargs)
     print 'Posted "%s" to your account' % text
 
   def reply(self, reply_to, text=None):
+    '''
+    replies to the tweet with the internal id given by reply_to
+
+    automatically includes all mentioned user's names in the reply.
+    '''
     reply_to = int(reply_to)
     if reply_to not in self.tweet_dict:
       print 'No tweet available with id %d' % reply_to
     reply_tweet = self.tweet_dict[reply_to]
     authors = reply_tweet.get_authors()
-    print authors
+    reply_to_id = reply_tweet.id
+    start_text = ' '.join(authors) + ' '
+    if text is None:
+        text = raw_input('Please enter your reply:\n%s' % start_text)
+    text = start_text + text
+    self.tweet(text, in_reply_to_status_id=reply_to_id)
 
   def print_tweets(self, max=10):
     for tweet in self.tweets:
