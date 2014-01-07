@@ -1,7 +1,7 @@
 import re
 import sys
 import json
-from pprint import pprint
+from pprint import pprint, pformat
 from twython.exceptions import TwythonRateLimitError
 from datetime import datetime
 
@@ -20,14 +20,16 @@ class bcolors:
 
 class Tweet(object):
   id_ctr = 0
-  HEADER_FORMAT = u'{cun}{username} {csn}(@{screen_name}){crt}{rt_string} {cdate}{date}{cend}'
+  HEADER_FORMAT = u'{cun}{username} {csn}(@{screen_name}){crt}{rt_string} {cdate}{date} {cid}{id}{cend}'
   FORMAT_COLORS = {
     'cun': bcolors.MAGENTA,
     'csn': bcolors.MAGENTA,
     'crt': bcolors.CYAN,
     'cdate': bcolors.BLUE,
     'ctext': bcolors.WHITE,
-    'cend': bcolors.ENDC}
+    'cend': bcolors.ENDC,
+    'cid': bcolors.WHITE
+  }
 
   def __init__(self, tweet_dict):
     self.raw = tweet_dict
@@ -49,7 +51,8 @@ class Tweet(object):
       'username': self.user['name'],
       'screen_name': self.user['screen_name'],
       'date': self.date.strftime('%d/%m/%y %H:%M'),
-      'rt_string': ''
+      'rt_string': '',
+      'id': self._id
     }
     options.update(self.FORMAT_COLORS)
 
@@ -85,31 +88,32 @@ class TweetHandler(object):
     self.tweets = []
     self.largest_id = None
     self._init_commands()
+    self.tweet_dict = {}
 
   def _fetch_tweets(self):
     try:
       tweets = self.client.get_home_timeline(since_id=self.largest_id)
       tweets = sorted(tweets, None,
                       lambda t: datetime.strptime(t['created_at'], DATETIME_FORMAT))
-      with open('temp', 'w') as f:
-        json.dump(tweets, f)
+      with open('pretty', 'w') as f:
+        f.write(pformat(tweets))
       return tweets
     except TwythonRateLimitError as e:
       print 'Sorry, too many requests. Please try again later.'
-      if not self.tweets:
-        with open('temp') as f:
-          tweets = json.load(f)
-        return tweets
-      else:
-        return []
+      return []
+
+  def add_new_tweets(self, tweets):
+    self.largest_id = max(t['id'] for t in tweets)
+    o_tweets = [Tweet(tweet) for tweet in tweets]
+    self.tweets.extend(o_tweets)
+    self.tweet_dict.update({tweet._id: tweet.id for tweet in o_tweets})
 
   def load_timeline(self):
     sys.stderr.write('Loading timeline...')
     tweets = self._fetch_tweets()
     print 'Found %d tweets' % len(tweets)
     if tweets:
-      self.largest_id = max(t['id'] for t in tweets)
-      self.tweets.extend(Tweet(tweet) for tweet in tweets)
+      self.add_new_tweets(tweets)
     self.print_tweets()
 
   def _init_commands(self):
