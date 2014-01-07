@@ -96,8 +96,14 @@ class TweetHandler(object):
     self.client = client
     self.tweets = []
     self.largest_id = None
-    self._init_commands()
     self.tweet_dict = {}
+    self.command_aliases = {
+      self.load_timeline: ['s', 'show'],
+      self.tweet: ['t', 'tweet'],
+      self.print_help: ['h', 'help'],
+      self.favorite: ['f', 'fav', 'favorite']
+    }
+    self._init_commands()
 
   def _fetch_tweets(self):
     try:
@@ -118,6 +124,9 @@ class TweetHandler(object):
     self.tweet_dict.update({tweet._id: tweet for tweet in o_tweets})
 
   def load_timeline(self):
+    '''
+    Loads up to 20 new tweets and displays them
+    '''
     sys.stderr.write('Loading timeline...')
     tweets = self._fetch_tweets()
     print 'Found %d tweets' % len(tweets)
@@ -126,16 +135,44 @@ class TweetHandler(object):
     self.print_tweets()
 
   def _init_commands(self):
-    self.commands = {
-      's': self.load_timeline,
-      'show': self.load_timeline,
-      't': self.tweet,
-      'tweet': self.tweet,
-      'r': self.reply,
-      'reply': self.reply
-    }
+    self.commands = {}
+    for command, names in self.command_aliases.items():
+      for name in names:
+        self.commands[name] = command
+
+  def print_help(self):
+    '''
+    shows this help message
+    '''
+    for func, aliases in self.command_aliases.items():
+      print ''
+      print ' '.join(aliases)
+      print '\n'.join('     %s' % line.strip() for line in func.__doc__.strip().split('\n') if line)
+
+  def get_tweet(self, in_id):
+    in_id = int(in_id)
+    if in_id not in self.tweet_dict:
+      print 'No tweet available with id %d' % in_id
+      return None
+    tweet = self.tweet_dict[in_id]
+    return tweet
+
+  def favorite(self, tweet_id):
+    '''
+    Favorites the given tweet
+    '''
+    tweet = self.get_tweet(tweet_id)
+    if not tweet:
+      return
+    if tweet.favorited:
+      return
+    self.client.create_favorite(id=tweet.id)
+    print "Favorited!"
 
   def tweet(self, text=None, **kwargs):
+    '''
+    tweets the given text
+    '''
     if text is None:
       print 'Please enter text to tweet'
       return
@@ -151,10 +188,9 @@ class TweetHandler(object):
 
     automatically includes all mentioned user's names in the reply.
     '''
-    reply_to = int(reply_to)
-    if reply_to not in self.tweet_dict:
-      print 'No tweet available with id %d' % reply_to
-    reply_tweet = self.tweet_dict[reply_to]
+    reply_tweet = self.get_tweet(reply_to)
+    if not reply_tweet:
+      return
     authors = reply_tweet.get_authors()
     reply_to_id = reply_tweet.id
     start_text = ' '.join(authors) + ' '
