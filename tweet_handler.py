@@ -101,7 +101,8 @@ class TweetHandler(object):
       self.load_timeline: ['s', 'show'],
       self.tweet: ['t', 'tweet'],
       self.print_help: ['h', 'help'],
-      self.favorite: ['f', 'fav', 'favorite']
+      self.favorite: ['f', 'fav', 'favorite'],
+      self.retweet: ['rt', 'retweet']
     }
     self._init_commands()
 
@@ -157,6 +158,19 @@ class TweetHandler(object):
     tweet = self.tweet_dict[in_id]
     return tweet
 
+  def retweet(self, tweet_id):
+    '''
+    Retweets the given tweet
+    '''
+    tweet = self.get_tweet(tweet_id)
+    if not tweet:
+      return
+    if tweet.retweeted:
+      print 'You have already retweeted this tweet.'
+      return
+    self.client.retweet(id=tweet.id)
+    print "Retweeted!"
+
   def favorite(self, tweet_id):
     '''
     Favorites the given tweet
@@ -165,6 +179,7 @@ class TweetHandler(object):
     if not tweet:
       return
     if tweet.favorited:
+      print 'You have already favourited this tweet'
       return
     self.client.create_favorite(id=tweet.id)
     print "Favorited!"
