@@ -41,6 +41,15 @@ class Tweet(object):
     if self.is_rt:
         self.date = datetime.strptime(tweet_dict['retweeted_status']['created_at'], DATETIME_FORMAT)
 
+  def get_authors(self):
+    authors = [self.user['screen_name']]
+    if self.is_rt:
+      authors.append(self.retweeted_status['user']['screen_name'])
+    props = self.raw
+    if self.is_rt:
+      props = self.retweeted_status
+    authors.extend(user['screen_name'] for user in props['entities']['user_mentions'])
+    return ['@%s' % author for author in authors]
 
   def __getattr__(self, name):
     return self.raw.get(name, None)
@@ -106,7 +115,7 @@ class TweetHandler(object):
     self.largest_id = max(t['id'] for t in tweets)
     o_tweets = [Tweet(tweet) for tweet in tweets]
     self.tweets.extend(o_tweets)
-    self.tweet_dict.update({tweet._id: tweet.id for tweet in o_tweets})
+    self.tweet_dict.update({tweet._id: tweet for tweet in o_tweets})
 
   def load_timeline(self):
     sys.stderr.write('Loading timeline...')
@@ -121,15 +130,28 @@ class TweetHandler(object):
       's': self.load_timeline,
       'show': self.load_timeline,
       't': self.tweet,
-      'tweet': self.tweet
+      'tweet': self.tweet,
+      'r': self.reply,
+      'reply': self.reply
     }
 
   def tweet(self, text=None):
     if text is None:
       print 'Please enter text to tweet'
       return
+    if len(text) > 140:
+      print 'Tweet is too long (%d characters total)' % len(text)
+      return
     self.client.update_status(status=text)
     print 'Posted "%s" to your account' % text
+
+  def reply(self, reply_to, text=None):
+    reply_to = int(reply_to)
+    if reply_to not in self.tweet_dict:
+      print 'No tweet available with id %d' % reply_to
+    reply_tweet = self.tweet_dict[reply_to]
+    authors = reply_tweet.get_authors()
+    print authors
 
   def print_tweets(self, max=10):
     for tweet in self.tweets:
