@@ -8,15 +8,15 @@ from datetime import datetime
 DATETIME_FORMAT = '%a %b %d %H:%M:%S +0000 %Y'
 
 class bcolors:
-    MAGENTA = '\033[35m'
-    BLUE    = '\033[34m'
-    GREEN   = '\033[32m'
-    YELLOW  = '\033[33m'
-    RED     = '\033[31m'
-    ENDC    = '\033[0m'
-    BLACK   = "\033[30m"
-    CYAN    = "\033[36m"
-    WHITE   = "\033[37m"
+  MAGENTA = '\033[35m'
+  BLUE    = '\033[34m'
+  GREEN   = '\033[32m'
+  YELLOW  = '\033[33m'
+  RED     = '\033[31m'
+  ENDC    = '\033[0m'
+  BLACK   = "\033[30m"
+  CYAN    = "\033[36m"
+  WHITE   = "\033[37m"
 
 class Tweet(object):
   id_ctr = 0
@@ -59,7 +59,7 @@ class Tweet(object):
       'pink': bcolors.MAGENTA,
       'username': self.user['name'],
       'screen_name': self.user['screen_name'],
-      'date': self.date.strftime('%d/%m/%y %H:%M'),
+      'date': self.date.strftime('%m/%d/%y %H:%M'),
       'rt_string': '',
       'id': self._id
     }
@@ -102,7 +102,8 @@ class TweetHandler(object):
       self.tweet: ['t', 'tweet'],
       self.print_help: ['h', 'help'],
       self.favorite: ['f', 'fav', 'favorite'],
-      self.retweet: ['rt', 'retweet']
+      self.retweet: ['rt', 'retweet'],
+      self.show_conversation: ['v', 'conv']
     }
     self._init_commands()
 
@@ -128,12 +129,12 @@ class TweetHandler(object):
     '''
     Loads up to 20 new tweets and displays them
     '''
-    sys.stderr.write('Loading timeline...')
     tweets = self._fetch_tweets()
-    print 'Found %d tweets' % len(tweets)
     if tweets:
       self.add_new_tweets(tweets)
-    self.print_tweets()
+    else:
+      print 'No new tweets'
+    self.print_tweets(t for t in self.tweets if not t.shown)
 
   def _init_commands(self):
     self.commands = {}
@@ -150,7 +151,7 @@ class TweetHandler(object):
       print ' '.join(aliases)
       print '\n'.join('     %s' % line.strip() for line in func.__doc__.strip().split('\n') if line)
 
-  def get_tweet(self, in_id):
+  def get_stored_tweet(self, in_id):
     in_id = int(in_id)
     if in_id not in self.tweet_dict:
       print 'No tweet available with id %d' % in_id
@@ -158,11 +159,18 @@ class TweetHandler(object):
     tweet = self.tweet_dict[in_id]
     return tweet
 
+  def get_remote_tweet(self, tweet_id):
+    local = [t for t in self.tweets if t.id == tweet_id]
+    if local:
+      return local
+    tweet_json = self.client.show_status(id=tweet_id)
+    return Tweet(tweet_json)
+
   def retweet(self, tweet_id):
     '''
     Retweets the given tweet
     '''
-    tweet = self.get_tweet(tweet_id)
+    tweet = self.get_stored_tweet(tweet_id)
     if not tweet:
       return
     if tweet.retweeted:
@@ -175,7 +183,7 @@ class TweetHandler(object):
     '''
     Favorites the given tweet
     '''
-    tweet = self.get_tweet(tweet_id)
+    tweet = self.get_stored_tweet(tweet_id)
     if not tweet:
       return
     if tweet.favorited:
@@ -203,7 +211,7 @@ class TweetHandler(object):
 
     automatically includes all mentioned user's names in the reply.
     '''
-    reply_tweet = self.get_tweet(reply_to)
+    reply_tweet = self.get_stored_tweet(reply_to)
     if not reply_tweet:
       return
     authors = reply_tweet.get_authors()
@@ -214,12 +222,28 @@ class TweetHandler(object):
     text = start_text + text
     self.tweet(text, in_reply_to_status_id=reply_to_id)
 
-  def print_tweets(self, max=10):
-    for tweet in self.tweets:
-      if tweet.shown:
-        continue
+  def print_tweets(self, tweets):
+    for tweet in tweets:
       print tweet.format()
       tweet.shown = True
+
+  def show_conversation(self, tweet_id):
+    '''
+    Shows tweets in a conversation.
+
+    Note: Only shows tweets previous to this one in the conversation,
+    does not find replies to the given tweet.
+    '''
+    tweet = self.get_stored_tweet(tweet_id)
+    if not tweet:
+      return
+    tweets = [tweet]
+    count = 10
+    while tweet.in_reply_to_status_id and count > 0:
+      count -= 1
+      tweet = self.get_remote_tweet(tweet.in_reply_to_status_id)
+      tweets.append(tweet)
+    self.print_tweets(reversed(tweets))
 
   def loop(self):
     self.load_timeline()
